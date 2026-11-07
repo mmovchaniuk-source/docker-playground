@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
 
   api:
-    image: marianamovchaniuk/docker-playground-api:v2
+    image: marianamovchaniuk/docker-playground-api:v3 
     ports:
       - "127.0.0.1:3001:3000"
     volumes:
