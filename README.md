@@ -5,21 +5,23 @@
 
 ## Архітектура
 
-- **Web:** Nginx, працює від непривілейованого користувача.
-- **API:** Node.js HTTP server, multi-stage Docker build, запуск від користувача `node`.
-- **Network:** стандартна bridge-мережа Docker Compose.
-- **Persistent storage:** іменований volume `app-data`, змонтований у `/data` контейнера API.
+Проєкт складається зі статичної вебсторінки на Nginx та Node.js API з лічильником відвідувань.
+Дані лічильника зберігаються в Docker volume, що дозволяє зберігати їх після перезапуску контейнера.
 
 ## Docker Hub images
 
 - Web: https://hub.docker.com/r/marianamovchaniuk/docker-playground-web
 - API: https://hub.docker.com/r/marianamovchaniuk/docker-playground-api
 
-## Вимоги
+## Перевірене середовище
 
-- Встановлений Docker Engine.
-- Плагін Docker Compose.
-- Доступ до Docker Hub для завантаження опублікованих образів.
+- Docker Engine: 29.9.2
+- Docker Compose: 5.6.1
+- Node.js: 22
+- API runtime: Distroless Node.js 22 Debian 13
+- API image: `v3`
+- Web image: `v1`
+
 
 ## Запуск проекту
 
@@ -73,48 +75,59 @@ docker compose ps
 
 ## Docker Compose
 
-Файл compose.yaml визначає два сервіси:
-web - вебсервер Nginx;
-api - Node.js API.
+`compose.yaml` визначає два сервіси:
 
-Compose створює спільну bridge-мережу. 
-Контейнери можуть звертатися один до одного за іменами сервісів. 
-Наприклад, API доступний іншим контейнерам цієї мережі за адресою http://api:3000.
+- `web` — Nginx;
+- `api` — Node.js API.
+
+Compose створює спільну bridge-мережу. Контейнери можуть взаємодіяти за іменами сервісів, наприклад API доступний у мережі за адресою `http://api:3000`.
 
 ## Порти
 
-8083:8080 - порт вебсервера; доступний на мережевих інтерфейсах Docker-хоста.
- - 8083 - порт cервера, через який можна звернутися до вебсторінки.
- - 8080 - порт усередині контейнера, на якому працює Nginx.
+- `8083:8080` — вебсервер доступний на Docker-хості через порт 8083.
+- `127.0.0.1:3001:3000` — API доступний лише локально на Docker-хості через порт 3001.
 
-127.0.0.1:3001:3000 - порт API доступний лише локально на Docker-хості.
- - 127.0.0.1 - API доступний через локально на самому сервері.
- - 3001 - порт сервера.
- - 3000 - порт усередині контейнера API.
+Порт API не публікується для зовнішніх підключень.
 
-expose: 3000 - декларує порт API для взаємодії всередині Docker-мережі; сам по собі не публікує його на хості.
+## Persistent storage
 
-## Зберігання даних
-Compose створює іменований volume app-data, який Docker монтує в /data контейнера API.
+Compose створює іменований volume app-data, у якому зберігається лічильник відвідувань API.
+
+Дані зберігаються після перезапуску або пересоздання контейнера, якщо використовується той самий volume.
+
 Переглянути volume:
 ```
 docker volume ls
 docker volume inspect docker-playground_app-data
 ```
-Перевірка збереження даних:
+Перевірити збереження даних:
 ```
 curl http://127.0.0.1:3001/visits
 docker compose restart api
 curl http://127.0.0.1:3001/visits
 ```
-Після перезапуску значення лічильника має продовжитися, а не починатися заново.
+## Версіонування та rollback
+
+API доступний у версіях v1, v2 та v3 на Docker Hub. 
+Поточна версія v3 використовує Distroless runtime.
+Для переходу на іншу версію змініть тег образу в compose.yaml та застосуйте конфігурацію:
+```
+docker compose up -d api
+```
+При переході між версіями з різними UID необхідно враховувати права доступу до persistent volume.
 
 ## Локальне збирання образів
 
+Зібрати API:
 ```
-docker build -t docker-playground-api:v1 ./api
-docker build -f Dockerfile.nonroot -t docker-playground:nonroot .
+docker build -t docker-playground-api:v3 ./api
 ```
-
-API використовує multi-stage build, а його дані зберігаються в іменованому Docker volume.
-
+Зібрати Web:
+```
+docker build -t docker-playground-web:v1 .
+```
+Зібрати Web із non-root образом:
+```
+docker build -f Dockerfile.nonroot -t docker-playground-web:nonroot .
+```
+API використовує multi-stage build: перевірка коду виконується на Node.js Alpine, а застосунок запускається в Distroless Node.js Debian 13.
