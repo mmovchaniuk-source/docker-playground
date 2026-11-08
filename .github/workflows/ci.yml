@@ -20,7 +20,10 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build API image
-        run: docker build -t marianamovchaniuk/docker-playground-api:latest ./api
+        run: docker build -t marianamovchaniuk/docker-playground-api:ci ./api
+
+      - name: Run API container
+        run: docker run -d --name api-test -p 3000:3000 marianamovchaniuk/docker-playground-api:latest
 
       - name: Push API image
         run: docker push marianamovchaniuk/docker-playground-api:latest
