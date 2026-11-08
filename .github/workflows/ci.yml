@@ -35,6 +35,9 @@ jobs:
           done
           exit 1
 
+      - name: Tag API image
+        run: docker tag marianamovchaniuk/docker-playground-api:ci marianamovchaniuk/docker-playground-api:latest
+
       - name: Push API image
         run: docker push marianamovchaniuk/docker-playground-api:latest
 
