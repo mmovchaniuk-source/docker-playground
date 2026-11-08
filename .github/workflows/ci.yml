@@ -23,7 +23,17 @@ jobs:
         run: docker build -t marianamovchaniuk/docker-playground-api:ci ./api
 
       - name: Run API container
-        run: docker run -d --name api-test -p 3000:3000 marianamovchaniuk/docker-playground-api:latest
+        run: docker run -d --name api-test -p 3000:3000 marianamovchaniuk/docker-playground-api:ci 
+
+      - name: Test API health
+        run: |
+          for i in {1..10}; do
+            if curl -fsS http://localhost:3000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
 
       - name: Push API image
         run: docker push marianamovchaniuk/docker-playground-api:latest
